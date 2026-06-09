@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Property Opportunity Scanner",
+  "name": "Property Opportunity Scanner Chrome Extension",
   "version": "1.0",
-  "description": "Scan any business website and get an opportunity score — how much they need professional interior photography.",
+  "description": "Scan any business website and get an opportunity score \u2014 how much they need professional interior photography.",
   "permissions": [
     "activeTab",
     "storage",
@@ -15,11 +15,17 @@
   "side_panel": {
     "default_path": "sidepanel.html"
   },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["content.js"],
-    "run_at": "document_idle"
-  }],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "Opportunity Scanner",
     "default_icon": {
