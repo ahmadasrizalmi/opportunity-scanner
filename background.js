@@ -28,49 +28,22 @@ async function clearHistory() {
   await chrome.storage.local.set({ scanHistory: [] });
 }
 
-async function deleteFromHistory(hostname) {
-  const history = await getHistory();
-  const filtered = history.filter(h => h.hostname !== hostname);
-  await chrome.storage.local.set({ scanHistory: filtered });
-}
-
-// ─── CSV Export ──────────────────────────────────────────────────
-
-function exportToCSV(history) {
-  const headers = ['URL', 'Business Type', 'Score', 'Total Images', 'Phone Photos', 'Low Res', 'Stock Photos', 'Has Gallery', 'Has Booking', 'Social Links', 'Scanned At'];
-  const rows = history.map(h => [
-    h.url,
-    h.businessType,
-    h.score,
-    h.stats?.totalImages || 0,
-    h.stats?.phoneImages || 0,
-    h.stats?.lowRes || 0,
-    h.stats?.stockPhotos || 0,
-    h.features?.hasGallery ? 'Yes' : 'No',
-    h.features?.hasBooking ? 'Yes' : 'No',
-    (h.features?.socialLinks || []).join('; '),
-    h.timestamp || h.updatedAt || ''
-  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
-  
-  return [headers.join(','), ...rows].join('\n');
-}
-
 // ─── Message Handler ─────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  
-  if (msg.type === 'SCAN_COMPLETE') {
-    (async () => {
-      await addToHistory(msg.result);
-      sendResponse({ success: true });
-    })();
-    return true;
-  }
   
   if (msg.type === 'GET_HISTORY') {
     (async () => {
       const history = await getHistory();
       sendResponse({ success: true, history });
+    })();
+    return true;
+  }
+  
+  if (msg.type === 'ADD_TO_HISTORY') {
+    (async () => {
+      await addToHistory(msg.result);
+      sendResponse({ success: true });
     })();
     return true;
   }
@@ -83,30 +56,36 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   
-  if (msg.type === 'DELETE_SCAN') {
+  if (msg.type === 'EXPORT_HISTORY') {
     (async () => {
-      await deleteFromHistory(msg.hostname);
-      sendResponse({ success: true });
+      const history = await getHistory();
+      const csv = [
+        'Hostname,Title,Score,Images,Date',
+        ...history.map(h => 
+          `"${h.hostname}","${(h.title||'').replace(/"/g,'""')}",${h.score},${h.imageCount||0},${h.date}`
+        )
+      ].join('\n');
+      
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      
+      chrome.downloads.download({
+        url,
+        filename: `opportunity-scan-${new Date().toISOString().split('T')[0]}.csv`,
+        saveAs: true
+      }, () => {
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        sendResponse({ success: true });
+      });
     })();
     return true;
   }
   
-  if (msg.type === 'EXPORT_CSV') {
-    (async () => {
-      const history = await getHistory();
-      const csv = exportToCSV(history);
-      sendResponse({ success: true, csv });
-    })();
-    return true;
-  }
+  return true;
 });
 
 // ─── Open Side Panel ──────────────────────────────────────────────
 
-chrome.action.onClicked.addListener(async (tab) => {
-  await chrome.sidePanel.open({ tabId: tab.id });
-});
-
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
 console.log('[Opportunity Scanner] Background loaded');
