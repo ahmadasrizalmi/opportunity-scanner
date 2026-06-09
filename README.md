@@ -1,6 +1,6 @@
 # Property Opportunity Scanner Chrome Extension
 
-Scan any business website and get an opportunity score — how much they need professional interior photography.
+Property opportunity scanner Chrome Extension — scan any business website and get an opportunity score for professional interior photography.
 
 ## Features
 
